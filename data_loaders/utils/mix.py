@@ -340,7 +340,7 @@ def cal_coeff_for_adjusting_relative_energy(wav1: ndarray, wav2: ndarray, target
     ae1 = np.sum(wav1**2) / np.prod(wav1.shape)
     ae2 = np.sum(wav2**2) / np.prod(wav2.shape)
     if ae1 == 0 or ae2 == 0 or not np.isfinite(ae1) or not np.isfinite(ae2):
-        return None
+        return 1.0  # None
     # compute the coefficients
     coeff = np.sqrt(ae1 / ae2 * np.power(10, -target_dB / 10))
     return coeff  # multiply it with wav2

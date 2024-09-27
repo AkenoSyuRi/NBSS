@@ -407,7 +407,7 @@ if __name__ == '__main__':
 
     x = torch.randn((1, 129, 251, 12)).cuda() # 6-channel, 4s, 8 kHz
     from torch.utils.flop_counter import FlopCounterMode
-    with FlopCounterMode(model, display=False) as fcm:
+    with FlopCounterMode(display=False) as fcm:
         res = model(x, inference=True).mean()
         flops_forward_eval = fcm.get_total_flops()
     for k, v in fcm.get_flop_counts().items():

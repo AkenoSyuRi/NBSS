@@ -1,0 +1,16 @@
+data:
+  class_path: data_loaders.librispeech.LibrispeechDataModule
+  init_args:
+    librispeech_dir: ~/data/audio_test/orig_dataset/LibriSpeech
+    rir_dir: ~/data/audio_test/orig_dataset/nbss_rirs_generated
+    target: direct_path
+    datasets: ["train-clean-100", "dev-clean", "test-clean", "test-clean"]
+    audio_time_len: [4.0, 4.0, null, null]
+    ovlp: mid
+    data_counts: [40000, 5000, 3000]
+    speech_overlap_ratio: [0.1, 1.0]
+    sir: [-5, 5]
+    snr: [0, 20]
+    num_spk: 2
+    noise_type: ["babble", "white"]
+    batch_size: [4, 4]
