@@ -1,10 +1,9 @@
 import random
-from os.path import basename
 from pathlib import Path
 from typing import Callable, Dict, List, Literal, Optional, Tuple, Union
 
+import librosa
 import numpy as np
-import soundfile as sf
 import torch
 from pytorch_lightning import LightningDataModule
 from pytorch_lightning.utilities.rank_zero import rank_zero_info, rank_zero_warn
@@ -30,7 +29,7 @@ def get_spk_file_dict(librispeech_dir: Path) -> Tuple[Dict[str, List[Path]], Lis
     spk_file_dict = dict()
     for spk in spk_ids:
         spk_dir = librispeech_dir / spk
-        files = list(spk_dir.rglob("*.flac"))
+        files = list(spk_dir.rglob("*.flac")) + list(spk_dir.rglob("*.wav"))
         spk_file_dict[spk] = files
 
     return spk_file_dict, spk_ids
@@ -84,7 +83,7 @@ class LibrispeechDataset(Dataset):
         """
         super().__init__()
         assert target in ["revb_image", "direct_path"] or target.startswith("RTS"), target
-        assert dataset in ["train-clean-100", "dev-clean", "test-clean"], dataset
+        assert dataset in ["train", "valid", "test"], dataset
         assert ovlp in ["mid", "headtail", "startend", "full", "hms", "fhms"], ovlp
         assert num_spk == 2, ("Not implemented for spk num=", num_spk)
         assert len(set(noise_type) - set(["babble", "white"])) == 0, noise_type
@@ -115,10 +114,7 @@ class LibrispeechDataset(Dataset):
         self.return_noise = return_noise
         self.snr = snr
 
-        self.rir_dir = (
-            Path(rir_dir).expanduser()
-            / {"train-clean-100": "train", "dev-clean": "validation", "test-clean": "test"}[dataset]
-        )
+        self.rir_dir = Path(rir_dir).expanduser() / {"train": "train", "valid": "validation", "test": "test"}[dataset]
         self.rirs = [str(r) for r in list(Path(self.rir_dir).expanduser().rglob("*.npz"))]
         self.rirs.sort()
         # load & save diffuse parameters
@@ -135,7 +131,7 @@ class LibrispeechDataset(Dataset):
             except:
                 ...
         assert len(self.rirs) > 0, f"{str(self.rir_dir)} is empty or not exists"
-        self.shuffle_rir = True if dataset == "train-clean-100" else False
+        self.shuffle_rir = True if dataset == "train" else False
 
     def __getitem__(self, index_seed: Tuple[int, int]):
         # for each item, an index and seed are given. The seed is used to reproduce this dataset on any machines
@@ -148,9 +144,9 @@ class LibrispeechDataset(Dataset):
         # step 1: load single channel clean speech signals
         cleans = []
         for i in range(self.num_spk):
-            source, sr_src = sf.read(clean_pair[i], dtype="float32")
+            source, _ = librosa.load(clean_pair[i], sr=self.sample_rate)
             cleans.append(source)
-            assert sr_src == self.sample_rate, (sr_src, self.sample_rate)
+            # assert sr_src == self.sample_rate, (sr_src, self.sample_rate)
 
         # step 2: load rirs
         if self.shuffle_rir:
@@ -227,8 +223,8 @@ class LibrispeechDataset(Dataset):
                 noise_i = np.zeros(shape=(mix_frames,), dtype=mix.dtype)
                 noise_list = choose_spk_files(self.spk_file_dict, self.spk_ids, 1, 10, rng=rng)
                 for noise_paths in noise_list:
-                    noise_ij, sr_noise = sf.read(noise_paths[0], dtype="float32", always_2d=False)  # [T]
-                    assert sr_noise == self.sample_rate and noise_ij.ndim == 1, (sr_noise, self.sample_rate)
+                    noise_ij, _ = librosa.load(noise_paths[0], sr=self.sample_rate)  # [T]
+                    # assert sr_noise == self.sample_rate and noise_ij.ndim == 1, (sr_noise, self.sample_rate)
                     noise_i += pad_or_cut([noise_ij], lens=[mix_frames], rng=rng)[0]
                 noises.append(noise_i)
             noise = np.stack(noises, axis=0).reshape(-1)
@@ -256,7 +252,7 @@ class LibrispeechDataset(Dataset):
             "seed": seed,
             "target": self.target,
             "sample_rate": 16000,
-            "dataset": f"Librispeech/{self.dataset}",
+            "dataset": f"Libri_AISHELL/{self.dataset}",
             "noise_type": noise_type,
             "noise": noises if self.return_noise else None,
             "rvbt": rvbts if self.return_rvbt else None,
@@ -349,7 +345,7 @@ class LibrispeechDataModule(LightningDataModule):
         while len(self.batch_size) < 4:
             self.batch_size.append(1)
 
-        rank_zero_info("dataset: Librispeech")
+        rank_zero_info("dataset: Libri_AISHELL")
         rank_zero_info(f"train/val/test/predict: {self.datasets}")
         rank_zero_info(f"batch size: train/val/test/predict = {self.batch_size}")
         rank_zero_info(f"audio_time_length: train/val/test/predict = {self.audio_time_len}")
@@ -452,8 +448,8 @@ class LibrispeechDataModule(LightningDataModule):
 if __name__ == "__main__":
     """python -m data_loaders.librispeech"""
     import importlib
-    import torchaudio
 
+    import torchaudio
     import yaml
     from tqdm import tqdm
 
@@ -473,10 +469,10 @@ if __name__ == "__main__":
         else:
             return class_or_function
 
-    # dataset = "train-clean-100"
-    # dataset = "dev-clean"
-    dataset = "test-clean"
-    save_count = 100
+    dataset = "train"
+    # dataset = "valid"
+    # dataset = "test"
+    save_count, bypass = 100, bool(1)
     save_dir = Path("/home/featurize/data/audio_test/test_mixture")
     with open(r"configs/datasets/librispeech.yaml") as fp:
         config = yaml.safe_load(fp)
@@ -488,7 +484,7 @@ if __name__ == "__main__":
 
     if dataset.startswith("train"):
         dataloader = datamodule.train_dataloader()
-    elif dataset.startswith("dev"):
+    elif dataset.startswith("valid"):
         dataloader = datamodule.val_dataloader()
     elif dataset.startswith("test"):
         dataloader = datamodule.test_dataloader()
@@ -506,8 +502,9 @@ if __name__ == "__main__":
 
     for ds, dataloader in dataloaders.items():
         for idx, (noisy, tar, paras) in tqdm(enumerate(dataloader, 1), total=save_count):
-            torchaudio.save(save_dir / f"{idx:03d}_mix.wav", noisy[0], paras[0]["sample_rate"])
-            torchaudio.save(save_dir / f"{idx:03d}_tar.wav", tar[0, :, 0], paras[0]["sample_rate"])
+            if not bypass:
+                torchaudio.save(save_dir / f"{idx:03d}_mix.wav", noisy[0], paras[0]["sample_rate"])
+                torchaudio.save(save_dir / f"{idx:03d}_tar.wav", tar[0, :, 0], paras[0]["sample_rate"])
 
             if idx == save_count:
                 break
