@@ -474,10 +474,10 @@ if __name__ == "__main__":
             return class_or_function
 
     # dataset = "train-clean-100"
-    dataset = "dev-clean"
-    # dataset = "test-clean"
+    # dataset = "dev-clean"
+    dataset = "test-clean"
     save_count = 100
-    save_dir = Path("/home/featurize/data/audio_test/output_data")
+    save_dir = Path("/home/featurize/data/audio_test/test_mixture")
     with open(r"configs/datasets/librispeech.yaml") as fp:
         config = yaml.safe_load(fp)
 
@@ -500,6 +500,9 @@ if __name__ == "__main__":
         dataloaders = {dataset: dataloader}
     else:
         dataloaders = dataloader
+
+    if not save_dir.exists():
+        save_dir.mkdir(parents=True)
 
     for ds, dataloader in dataloaders.items():
         for idx, (noisy, tar, paras) in tqdm(enumerate(dataloader, 1), total=save_count):
