@@ -69,7 +69,7 @@ class BaseCLI(LightningCLI):
             self.trainer.logger = TensorBoardLogger(save_dir=save_dir, name="", version=version, default_hp_metric=False)
         else:
             model_name = self.model.name if hasattr(self.model, 'name') else type(self.model).__name__
-            self.trainer.logger = TensorBoardLogger('logs/', name=model_name, default_hp_metric=False)
+            self.trainer.logger = TensorBoardLogger('~/output/nbss_logs/', name=model_name, default_hp_metric=False)
 
     def before_test(self):
         if self.config['test']['ckpt_path'] != None:

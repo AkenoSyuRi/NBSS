@@ -104,8 +104,8 @@ class STFT(nn.Module):
 
 
 if __name__ == '__main__':
-    x = torch.randn((1, 1, 8000 * 4))
-    stft = STFT(**paras_8k)
+    x = torch.randn((1, 1, 16000 * 4))
+    stft = STFT(**paras_16k)
     X, ol = stft.stft(x)
     x_p = stft.istft(X, ol)
     print(x.shape, x_p.shape, X.shape)

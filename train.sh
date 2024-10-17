@@ -19,7 +19,7 @@
 python SharedTrainer.py fit \
     --config=configs/onlineSpatialNet.yaml \
     --config=configs/datasets/librispeech.yaml \
-    --ckpt_path=logs/OnlineSpatialNet/version_0/checkpoints/last.ckpt \
+    --ckpt_path=~/output/nbss_logs/OnlineSpatialNet/version_0/checkpoints/last.ckpt \
     --model.channels="[0,1,2,3,4,5]" \
     --model.arch.dim_input=12 \
     --model.arch.dim_output=4 \

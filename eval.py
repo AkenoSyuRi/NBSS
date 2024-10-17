@@ -16,28 +16,30 @@ def forward(x):
     X = torch.view_as_real(X).reshape(B, F, T, -1)  # B,F,T,2C
 
     # network process
-    out = model.forward(X)
+    out = model.forward(X, inference=True)
     if not torch.is_complex(out):
         out = torch.view_as_complex(out.float().reshape(B, F, T, -1, 2))  # [B,F,T,Spk]
     out = out.permute(0, 3, 1, 2)  # [B,Spk,F,T]
+    Yr_hat = norm.inorm(out, (Xr, XrMM))
 
-    yr_hat = stft.istft(out, stft_paras)
+    yr_hat = stft.istft(Yr_hat, stft_paras)
     return yr_hat.squeeze()
-    ...
 
 
 if __name__ == "__main__":
     torch.set_grad_enabled(False)
 
-    config_path = "logs/OnlineSpatialNet/version_0/config.yaml"
-    ckpt_path = "logs/OnlineSpatialNet/version_0/checkpoints/last.ckpt"
-    idx = len("arch.")
+    compile = bool(0)
+    config_path = Path("~/output/nbss_logs/OnlineSpatialNet/version_0/config.yaml").expanduser()
+    ckpt_path = Path("~/output/nbss_logs/OnlineSpatialNet/version_0/checkpoints/last.ckpt").expanduser()
+    idx = len("arch.") if compile else len("arch._orig_mod.")
     device = "cuda"
 
     with open(config_path, "r") as fp:
         config = yaml.safe_load(fp)
     model = OnlineSpatialNet(**config["model"]["arch"]["init_args"])
-    model = torch.compile(model)
+    if compile:
+        model = torch.compile(model)
 
     # load weights from checkpoint
     ckpt_dict = torch.load(ckpt_path, map_location=device)
@@ -49,23 +51,26 @@ if __name__ == "__main__":
     model.to(device)
 
     # inference an audio
-
     stft: STFT = STFT(n_fft=512, n_hop=256, win_len=512).to(device)
     norm: Norm = Norm(mode="utterance").to(device)
 
     out_dir = Path("/home/featurize/output/out_wav")
     out_dir.mkdir(parents=True, exist_ok=True)
-    for mix_path in Path(r"/home/featurize/data/audio_test/test_mixture").glob("*_mix.wav"):
-        tar_path = mix_path.with_name(mix_path.name.replace("mix", "tar"))
-        out_path = out_dir / mix_path.name.replace("mix", "out")
-        
+    for mix_path in Path(r"/home/featurize/data/audio_test/test_recording").glob("*_mix.wav"):
         mix_data, sr = torchaudio.load(mix_path)
-        tar_data, sr = torchaudio.load(tar_path)
+        # mix_data = mix_data[..., : 120 * sr]  # FIXME: cut the wav for saving cuda memory
 
         inp_data = mix_data[None].to(device)
         out_data = forward(inp_data).cpu()
 
-        save_data = torch.cat([mix_data[0:1], tar_data, out_data])
+        tar_path = mix_path.with_name(mix_path.name.replace("mix", "tar"))
+        if tar_path.exists():
+            tar_data, sr = torchaudio.load(tar_path)
+            save_data = torch.cat([mix_data[0:1], tar_data, out_data])
+        else:
+            save_data = torch.cat([mix_data[0:1], out_data])
+
+        out_path = out_dir / mix_path.name.replace("mix", "out")
         torchaudio.save(out_path, save_data, sr)
         print(out_path)
         ...

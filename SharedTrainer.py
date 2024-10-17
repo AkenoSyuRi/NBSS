@@ -12,8 +12,7 @@ from packaging.version import Version
 from torch import Tensor
 from torchmetrics.functional.audio import permutation_invariant_training as pit
 from torchmetrics.functional.audio import pit_permutate
-from torchmetrics.functional.audio import \
-    scale_invariant_signal_distortion_ratio as si_sdr
+from torchmetrics.functional.audio import scale_invariant_signal_distortion_ratio as si_sdr
 from torchmetrics.functional.audio import signal_distortion_ratio as sdr
 from pytorch_lightning.cli import LightningArgumentParser
 from pytorch_lightning.callbacks import ModelCheckpoint
@@ -26,7 +25,6 @@ from models.utils.metrics import (cal_metrics_functional, recover_scale)
 from models.utils.base_cli import BaseCLI
 from models.utils.my_save_config_callback import MySaveConfigCallback as SaveConfigCallback
 from models.utils.my_earlystopping import MyEarlyStopping as EarlyStopping
-import data_loaders
 
 
 class TrainModule(pl.LightningModule):
@@ -40,7 +38,7 @@ class TrainModule(pl.LightningModule):
         arch: nn.Module,
         channels: List[int],
         ref_channel: int,
-        stft: STFT = STFT(n_fft=256, n_hop=128, win_len=256),
+        stft: STFT = STFT(n_fft=512, n_hop=256, win_len=512),
         norm: Norm = Norm(mode='utterance'),
         loss: Loss = Loss(loss_func=neg_si_sdr, pit=True),
         optimizer: Tuple[str, Dict[str, Any]] = ("Adam", {

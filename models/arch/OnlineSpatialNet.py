@@ -391,21 +391,24 @@ if __name__ == '__main__':
         dim_input=12,
         dim_output=4,
         num_layers=8,
+        dim_squeeze=8,
+        num_freqs=257,
+        encoder_kernel_size=5,
         dim_hidden=96,
         dim_ffn=192,
         num_heads=4,
+        dropout=(0, 0, 0),
         kernel_size=(5, 3),
         conv_groups=(8, 8),
         norms=["LN", "LN", "GN", "LN", "LN", "LN"],
-        dim_squeeze=8,
-        num_freqs=129,
         full_share=0,
         attention='mamba(16,4)',
+        decay=(4, 5, 9, 10),
         rope=False,
     ).cuda()
     print(model)
 
-    x = torch.randn((1, 129, 251, 12)).cuda() # 6-channel, 4s, 8 kHz
+    x = torch.randn((1, 257, 251, 12)).cuda() # 6-channel, 4s, 8 kHz
     from torch.utils.flop_counter import FlopCounterMode
     with FlopCounterMode(display=False) as fcm:
         res = model(x, inference=True).mean()
@@ -420,7 +423,8 @@ if __name__ == '__main__':
     print(f"flops_forward={flops_forward_eval/4e9:.2f}G/s, params={params_eval/1e6:.2f} M")
 
     # check if the implementation is causal or not
-    x = torch.randn((1, 129, 1024, 12)).cuda()
-    y1024 = model(x)
-    y1000 = model(x[:, :, :1000, :])
-    print('causal:', (y1024[:, :, :1000, :] == y1000).all().item())
+    model.eval()
+    x = torch.randn((1, 257, 512, 12)).cuda()
+    y512 = model(x, inference=True)
+    y500 = model(x[:, :, :500, :], inference=True)
+    print('causal:', (y512[:, :, :500, :] == y500).all().item())

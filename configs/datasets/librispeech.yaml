@@ -14,3 +14,4 @@ data:
     num_spk: 2
     noise_type: ["babble", "white"]
     batch_size: [4, 4]
+    num_workers: 14

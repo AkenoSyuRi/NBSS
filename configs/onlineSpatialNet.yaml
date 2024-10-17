@@ -11,9 +11,11 @@ model:
   arch:
     class_path: models.arch.OnlineSpatialNet.OnlineSpatialNet
     init_args:
-      # dim_input: 16
-      # dim_output: 4
+      dim_input: 12
+      dim_output: 4
       num_layers: 8
+      dim_squeeze: 8
+      num_freqs: 257
       encoder_kernel_size: 5
       dim_hidden: 96
       dim_ffn: 192
@@ -22,8 +24,6 @@ model:
       kernel_size: [5, 3]
       conv_groups: [8, 8]
       norms: ["LN", "LN", "GN", "LN", "LN", "LN"]
-      dim_squeeze: 8
-      num_freqs: 257
       full_share: 0 # set to 9999 to not share the full-band module, which will increase the model performance with the cost of larger parameter size.
       attention: mamba(16,4) # mhsa(251)/ret(2)/mamba(16,4)
       decay: [4, 5, 9, 10]
@@ -36,8 +36,6 @@ model:
       n_fft: 512
       n_hop: 256
       win_len: 512
-      # n_fft: 256
-      # n_hop: 128
   loss:
     class_path: models.io.loss.Loss
     init_args:

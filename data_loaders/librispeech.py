@@ -469,9 +469,9 @@ if __name__ == "__main__":
         else:
             return class_or_function
 
-    dataset = "train"
+    # dataset = "train"
     # dataset = "valid"
-    # dataset = "test"
+    dataset = "test"
     save_count, bypass = 100, bool(1)
     save_dir = Path("/home/featurize/data/audio_test/test_mixture")
     with open(r"configs/datasets/librispeech.yaml") as fp:

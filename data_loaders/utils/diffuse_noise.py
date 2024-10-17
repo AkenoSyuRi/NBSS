@@ -41,7 +41,7 @@ def gen_desired_spatial_coherence(pos_mics: np.ndarray, fs: int, noise_field: st
     num_freqs = nfft // 2 + 1
 
     # compute desired spatial coherence matric
-    ww = 2 * math.pi * fs * np.array(list(range(num_freqs))) / nfft
+    ww = 2 * math.pi * fs * np.arange(num_freqs) / nfft
     dist = np.linalg.norm(pos_mics[:, np.newaxis, :] - pos_mics[np.newaxis, :, :], axis=-1, keepdims=True)
     if noise_field == 'spherical':
         DSC = np.sinc(ww * dist / (c * math.pi))
