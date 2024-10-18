@@ -11,6 +11,7 @@
 
 import math
 
+import anf_generator as anf
 import numpy as np
 import scipy
 from scipy.signal import stft, istft
@@ -60,6 +61,14 @@ def gen_desired_spatial_coherence(pos_mics: np.ndarray, fs: int, noise_field: st
 
     return DSC, Cs
 
+def gen_desired_spatial_coherence_v2(pos_mics: np.ndarray, fs: int, noise_field: str = 'spherical', c: float = 343.0, nfft: int = 512):
+    params = anf.CoherenceMatrix.Parameters(pos_mics, noise_field, fs, nfft, c)
+    DSC = anf.CoherenceMatrix.CoherenceMatrix(params)
+    Cs = anf.MixingMatrix.MixingMatrix(DSC, "evd", "balance+smooth")
+    Cs = Cs.matrix[..., :nfft // 2 + 1]
+    Cs = np.transpose(Cs, [2, 0, 1])  # -> (n_freq,n_mic,n_mic)
+    # print(DSC.matrix.shape, Cs.shape)
+    return DSC.matrix, Cs
 
 def gen_diffuse_noise(noise: np.ndarray, L: int, Cs: np.ndarray, nfft: int = 256, rng: np.random.Generator = np.random.default_rng()) -> np.ndarray:
     """generate diffuse noise with the mixing matrice of desired spatial coherence

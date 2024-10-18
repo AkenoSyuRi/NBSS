@@ -493,7 +493,7 @@ def generate_rir_cfg_list(
     arr_rotate_lims: Union[Tuple[Optional[Tuple[float, float]], Optional[Tuple[float, float]], Optional[Tuple[float, float]]], Literal['auto']] = 'auto',
     arr_room_dist: Union[Tuple[float, float], Literal['auto']] = (0.5, 0.2),
     wall_abs_weights_lims: Union[List[Tuple[float, float]], Literal['auto', None]] = 'auto',
-    mic_num: Union[int, List[int], Tuple[Union[int, List[int]], int]] = 6,
+    mic_num: Union[int, List[int], Tuple[Union[int, List[int]], int]] = 7,
     mic_pos_var: float = 0,
     spk_arr_dist: Union[Tuple[float, float], Literal['auto', 'random']] = 'auto',
     trajectory: Optional[Tuple[str, float]] = None,
@@ -662,6 +662,8 @@ def generate_rir_cfg_list(
     #     warnings.warn(f'the given RT60={RT60} could not achieved with the given room_sz={room_sz} and abs_weights={abs_weights}')
 
     # microphone positions
+    assert mic_zlim[0] < mic_zlim[1] and mic_zlim[0] < room_sz[2], mic_zlim
+    mic_zlim = (mic_zlim[0], min(mic_zlim[1], room_sz[2]))
     mic_center = None
     while mic_center is None or (mic_center[:2] < arr_room_dist[1]).any() or (mic_center[:2] > np.array(room_sz)[:2] - arr_room_dist[1]).any():
         mic_center = np.array([

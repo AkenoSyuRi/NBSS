@@ -2,6 +2,7 @@ import random
 from pathlib import Path
 from typing import Callable, Dict, List, Literal, Optional, Tuple, Union
 
+import acoustics
 import librosa
 import numpy as np
 import torch
@@ -10,7 +11,7 @@ from pytorch_lightning.utilities.rank_zero import rank_zero_info, rank_zero_warn
 from torch.utils.data import DataLoader, Dataset
 
 from data_loaders.utils.collate_func import default_collate_func
-from data_loaders.utils.diffuse_noise import gen_desired_spatial_coherence, gen_diffuse_noise
+from data_loaders.utils.diffuse_noise import gen_desired_spatial_coherence_v2, gen_diffuse_noise
 from data_loaders.utils.mix import (
     cal_coeff_for_adjusting_relative_energy,
     convolve,
@@ -123,7 +124,7 @@ class LibrispeechDataset(Dataset):
             self.Cs = np.load(diffuse_paras_path, allow_pickle=True)["Cs"]
         else:
             pos_mics = np.load(self.rirs[0], allow_pickle=True)["pos_rcv"]
-            _, self.Cs = gen_desired_spatial_coherence(
+            _, self.Cs = gen_desired_spatial_coherence_v2(
                 pos_mics=pos_mics, fs=self.sample_rate, noise_field="spherical", c=343, nfft=512
             )
             try:
@@ -145,6 +146,7 @@ class LibrispeechDataset(Dataset):
         cleans = []
         for i in range(self.num_spk):
             source, _ = librosa.load(clean_pair[i], sr=self.sample_rate)
+            source = acoustics.signal.highpass(source, 100, self.sample_rate, 8)
             cleans.append(source)
             # assert sr_src == self.sample_rate, (sr_src, self.sample_rate)
 
@@ -224,6 +226,7 @@ class LibrispeechDataset(Dataset):
                 noise_list = choose_spk_files(self.spk_file_dict, self.spk_ids, 1, 10, rng=rng)
                 for noise_paths in noise_list:
                     noise_ij, _ = librosa.load(noise_paths[0], sr=self.sample_rate)  # [T]
+                    noise_ij = acoustics.signal.highpass(noise_ij, 100, self.sample_rate, 8)
                     # assert sr_noise == self.sample_rate and noise_ij.ndim == 1, (sr_noise, self.sample_rate)
                     noise_i += pad_or_cut([noise_ij], lens=[mix_frames], rng=rng)[0]
                 noises.append(noise_i)
@@ -469,11 +472,11 @@ if __name__ == "__main__":
         else:
             return class_or_function
 
-    # dataset = "train"
+    dataset = "train"
     # dataset = "valid"
-    dataset = "test"
-    save_count, bypass = 100, bool(1)
-    save_dir = Path("/home/featurize/data/audio_test/test_mixture")
+    # dataset = "test"
+    save_count, bypass = 50, bool(0)
+    save_dir = Path("/home/featurize/output/out_wav")
     with open(r"configs/datasets/librispeech.yaml") as fp:
         config = yaml.safe_load(fp)
 

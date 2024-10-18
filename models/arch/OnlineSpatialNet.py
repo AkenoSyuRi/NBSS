@@ -389,7 +389,7 @@ if __name__ == '__main__':
     # CUDA_VISIBLE_DEVICES=7, python -m models.arch.OnlineSpatialNet
     model = OnlineSpatialNet(
         dim_input=12,
-        dim_output=4,
+        dim_output=2,
         num_layers=8,
         dim_squeeze=8,
         num_freqs=257,
@@ -428,3 +428,4 @@ if __name__ == '__main__':
     y512 = model(x, inference=True)
     y500 = model(x[:, :, :500, :], inference=True)
     print('causal:', (y512[:, :, :500, :] == y500).all().item())
+    print(y512.shape, y500.shape)
