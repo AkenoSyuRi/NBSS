@@ -54,6 +54,34 @@ def choose_spk_files(
     return spk_files
 
 
+def get_azimuth_elevation(mic_pos, src_pos, eps=1e-7):
+    """
+    mic_pos: (n_mic, 3)
+    src_pos: (n_src, 3)
+    view array_pos as a reference point (origin of the coordinate)
+    :return azi shape (num_src,) range [-pi,pi], ele shape (num_src,) range [-pi/2,pi/2]
+    """
+    mic_center = np.mean(mic_pos, axis=0)
+    delta_d = src_pos - mic_center
+
+    delta_x = delta_d[:, 0]
+    delta_y = delta_d[:, 1]
+    delta_z = delta_d[:, 2]
+
+    delta_x += np.copysign(eps, delta_x)  # avoid dividing by zero
+    azi = np.arctan(delta_y / delta_x)
+    ele = np.arctan(delta_z / np.sqrt(delta_x**2 + delta_y**2))
+
+    mask = delta_x < 0
+    azi[mask & (delta_y < 0)] -= np.pi
+    azi[mask & (delta_y > 0)] += np.pi
+
+    azi = np.round(np.rad2deg(azi), 1)
+    ele = np.round(np.rad2deg(ele), 1)
+
+    return azi, ele
+
+
 class LibrispeechDataset(Dataset):
 
     def __init__(
@@ -179,6 +207,13 @@ class LibrispeechDataset(Dataset):
             raise NotImplementedError("Unknown target: " + self.target)
         num_mic = rir.shape[1]
 
+        # check if out of threshold elevation angle
+        pos_rcv = rir_dict["pos_rcv"]
+        pos_src = rir_dict["pos_src"]
+        _, ele = get_azimuth_elevation(pos_rcv, pos_src)
+        out_of_angle = np.zeros(self.num_spk, dtype=bool)
+        out_of_angle[np.abs(ele) < 60] = True  # TODO: view as outside signal if greater than 60 degree
+
         # step 3: decide the overlap type, overlap ratio, and the needed length of the two signals
         # randomly sample one ovlp_type if self.ovlp==fhms or hms
         ovlp_type = sample_an_overlap(rng=rng, ovlp_type=self.ovlp, num_spk=num_spk)
@@ -244,6 +279,14 @@ class LibrispeechDataset(Dataset):
         snr_real = 10 * np.log10(np.sum(mix**2) / np.sum(noise**2))
         assert np.isclose(snr_this, snr_real, atol=0.5), (snr_this, snr_real)
         mix[:, :] = mix + noise
+
+        # construct the target signal according to the out_of_angle flag
+        label = np.zeros([1, *targets.shape[1:]], dtype=np.float32)
+        for i in range(self.num_spk):
+            if out_of_angle[i]:
+                continue
+            label += targets[i : i + 1]
+        targets = label
 
         # scale mix and targets to [-0.9, 0.9]
         scale_value = 0.9 / max(np.max(np.abs(mix)), np.max(np.abs(targets)))
