@@ -18,23 +18,7 @@
 #     --trainer.max_epochs=100
 
 # train data-driven
-# python SharedTrainer.py fit \
-#     --config=configs/onlineSpatialNet.yaml \
-#     --config=configs/datasets/librispeech.yaml \
-#     --model.channels="[0,1,2,3,4,5,6]" \
-#     --model.arch.dim_input=14 \
-#     --model.arch.dim_output=2 \
-#     --model.arch.num_freqs=257 \
-#     --model.compile=true \
-#     --model.loss.pit=false \
-#     --trainer.precision=32 \
-#     --data.batch_size="[4,4]" \
-#     --trainer.devices=0, \
-#     --trainer.max_epochs=100
-
-# resume
 python SharedTrainer.py fit \
-    --ckpt_path=~/output/nbss_logs/OnlineSpatialNet/version_3/checkpoints/last.ckpt \
     --config=configs/onlineSpatialNet.yaml \
     --config=configs/datasets/librispeech.yaml \
     --model.channels="[0,1,2,3,4,5,6]" \
@@ -48,3 +32,20 @@ python SharedTrainer.py fit \
     --data.batch_size="[4,4]" \
     --trainer.devices=0, \
     --trainer.max_epochs=100
+
+# resume
+# python SharedTrainer.py fit \
+#     --ckpt_path=~/output/nbss_logs/OnlineSpatialNet/version_3/checkpoints/last.ckpt \
+#     --config=configs/onlineSpatialNet.yaml \
+#     --config=configs/datasets/librispeech.yaml \
+#     --model.channels="[0,1,2,3,4,5,6]" \
+#     --model.arch.dim_input=14 \
+#     --model.arch.dim_output=2 \
+#     --model.arch.num_freqs=257 \
+#     --model.compile=true \
+#     --model.loss.loss_func="models.io.loss.cc_mse" \
+#     --model.loss.pit=false \
+#     --trainer.precision=32 \
+#     --data.batch_size="[4,4]" \
+#     --trainer.devices=0, \
+#     --trainer.max_epochs=100

@@ -566,7 +566,8 @@ def generate_rir_cfg_list(
     mic_pos_var: float = 0,
     spk_arr_dist: Union[Tuple[float, float], Literal["auto", "random"]] = "auto",
     trajectory: Optional[Tuple[str, float]] = None,
-    spk_angle: int = 0,
+    spk_angle: int = 20,
+    all_in_same_plane: bool = False,
     fs: int = 16000,
     attn_diff: Tuple[Optional[float], Optional[float], Optional[float]] = (15.0, 15.0, 60.0),
     save_to: Union[Literal["auto"], str] = "auto",
@@ -594,6 +595,7 @@ def generate_rir_cfg_list(
         spk_arr_dist: the distance range between the center of microphone array and speaker. For trajectory, this parameter is used as the minimum distance between microphone array and speaker.
         trajectory: the trajectory type of each source and the distance between adjacent trajectory points (m). can be `None` or something like (`4points+sin`, 0.05).
         spk_angle: the minimum angle(degree) between all the speakers
+        all_in_same_plane: keep mic array and the speakers in the same plane
         fs: sample rate.
         attn_diff: starts from what attenuation (dB) to use diffuse model to generate rir for speech and noise, and the maximum attenuation (dB). diffuse model will speed up the simulation but is not accurate?
         save_to: save the configuration file to.
@@ -751,7 +753,7 @@ def generate_rir_cfg_list(
 
     # microphone positions
     assert mic_zlim[0] < mic_zlim[1] and mic_zlim[0] < room_sz[2], mic_zlim
-    mic_zlim = (mic_zlim[0], min(mic_zlim[1], room_sz[2]))
+    mic_zlim = (mic_zlim[0], min(mic_zlim[1], room_sz[2] - arr_room_dist[1]))
     mic_center = None
     while (
         mic_center is None
@@ -801,6 +803,10 @@ def generate_rir_cfg_list(
     # add small position variations to the (x,y,z) of each mic for simulating position's inperfection
     if mic_pos_var > 0:
         pos_rcv = pos_rcv + uniform(low=-mic_pos_var, high=mic_pos_var, size=pos_rcv.shape)
+
+    # limit all the speakers has the same height as mic_center
+    if all_in_same_plane:
+        spk_zlim = (mic_center[2], mic_center[2])
 
     # sample speaker postions
     pos_src = []
@@ -889,7 +895,7 @@ def __gen__(
     if index < train_rir_num:
         setdir = "train"
     elif index >= train_rir_num and index < train_rir_num + val_rir_num:
-        setdir = "validation"
+        setdir = "valid"
     else:
         setdir = "test"
     save_to = os.path.join(rir_dir, setdir, str(index) + ".npz")
@@ -983,7 +989,7 @@ def generate_rir_files(
     rir_dir = os.path.expanduser(rir_dir)
     if (
         (Path(rir_dir) / "train").exists()
-        or (Path(rir_dir) / "validation").exists()
+        or (Path(rir_dir) / "valid").exists()
         or (Path(rir_dir) / "test").exists()
     ):
         ans = input("dir " + rir_dir + " exists, still generate rir?(y/n)")
@@ -993,7 +999,7 @@ def generate_rir_files(
     else:
         os.makedirs(rir_dir, exist_ok=True)
 
-    for setdir in ["train", "validation", "test"]:
+    for setdir in ["train", "valid", "test"]:
         os.makedirs(os.path.join(rir_dir, setdir), exist_ok=True)
 
     if not use_gpu:

@@ -30,8 +30,10 @@ if __name__ == "__main__":
     torch.set_grad_enabled(False)
 
     compile = bool(0)
-    config_path = Path("~/output/nbss_logs/OnlineSpatialNet/version_0/config.yaml").expanduser()
-    ckpt_path = Path("~/output/nbss_logs/OnlineSpatialNet/version_0/checkpoints/last.ckpt").expanduser()
+    in_dir = Path(r"/home/featurize/output/in_wav")
+    out_dir = Path("/home/featurize/output/out_wav")
+    config_path = Path("~/output/nbss_logs/OnlineSpatialNet/version_4/config.yaml").expanduser()
+    ckpt_path = Path("~/output/nbss_logs/OnlineSpatialNet/version_4/checkpoints/last.ckpt").expanduser()
     idx = len("arch.") if compile else len("arch._orig_mod.")
     device = "cuda"
 
@@ -54,11 +56,9 @@ if __name__ == "__main__":
     stft: STFT = STFT(n_fft=512, n_hop=256, win_len=512).to(device)
     norm: Norm = Norm(mode="utterance").to(device)
 
-    out_dir = Path("/home/featurize/output/out_wav")
     out_dir.mkdir(parents=True, exist_ok=True)
-    for mix_path in Path(r"/home/featurize/data/audio_test/test_recording").glob("*_mix.wav"):
+    for mix_path in in_dir.glob("*_mix.wav"):
         mix_data, sr = torchaudio.load(mix_path)
-        # mix_data = mix_data[..., : 120 * sr]  # FIXME: cut the wav for saving cuda memory
 
         inp_data = mix_data[None].to(device)
         out_data = forward(inp_data).cpu()
@@ -66,9 +66,9 @@ if __name__ == "__main__":
         tar_path = mix_path.with_name(mix_path.name.replace("mix", "tar"))
         if tar_path.exists():
             tar_data, sr = torchaudio.load(tar_path)
-            save_data = torch.cat([mix_data[0:1], tar_data, out_data])
+            save_data = torch.stack([mix_data[0], tar_data[0], out_data])
         else:
-            save_data = torch.cat([mix_data[0:1], out_data])
+            save_data = torch.cat([mix_data[0], out_data])
 
         out_path = out_dir / mix_path.name.replace("mix", "out")
         torchaudio.save(out_path, save_data, sr)

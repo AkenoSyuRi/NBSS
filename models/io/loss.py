@@ -40,7 +40,7 @@ def neg_snr(preds: Tensor, target: Tensor) -> Tensor:
     return -torch.mean(snr_val.view(batch_size, -1), dim=1)
 
 
-def _mse(preds: Tensor, target: Tensor, alpha=1e6) -> Tensor:
+def _mse(preds: Tensor, target: Tensor, alpha=1e3) -> Tensor:
     """calculate mse loss for a batch
 
     Returns:

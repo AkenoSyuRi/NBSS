@@ -143,7 +143,7 @@ class LibrispeechDataset(Dataset):
         self.return_noise = return_noise
         self.snr = snr
 
-        self.rir_dir = Path(rir_dir).expanduser() / {"train": "train", "valid": "validation", "test": "test"}[dataset]
+        self.rir_dir = Path(rir_dir).expanduser() / dataset
         self.rirs = [str(r) for r in list(Path(self.rir_dir).expanduser().rglob("*.npz"))]
         self.rirs.sort()
         # load & save diffuse parameters
@@ -210,9 +210,9 @@ class LibrispeechDataset(Dataset):
         # check if out of threshold elevation angle
         pos_rcv = rir_dict["pos_rcv"]
         pos_src = rir_dict["pos_src"]
-        _, ele = get_azimuth_elevation(pos_rcv, pos_src)
+        azi, _ = get_azimuth_elevation(pos_rcv, pos_src)
         out_of_angle = np.zeros(self.num_spk, dtype=bool)
-        out_of_angle[np.abs(ele) < 60] = True  # TODO: view as outside signal if greater than 60 degree
+        out_of_angle[np.abs(azi) > 45] = True  # TODO: view as outside signal if greater than 60 degree
 
         # step 3: decide the overlap type, overlap ratio, and the needed length of the two signals
         # randomly sample one ovlp_type if self.ovlp==fhms or hms
@@ -515,11 +515,11 @@ if __name__ == "__main__":
         else:
             return class_or_function
 
-    dataset = "train"
+    # dataset = "train"
     # dataset = "valid"
-    # dataset = "test"
+    dataset = "test"
     save_count, bypass = 50, bool(0)
-    save_dir = Path("/home/featurize/output/out_wav")
+    save_dir = Path("/home/featurize/output/in_wav")
     with open(r"configs/datasets/librispeech.yaml") as fp:
         config = yaml.safe_load(fp)
 
